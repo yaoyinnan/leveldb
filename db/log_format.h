@@ -15,19 +15,19 @@ enum RecordType {
   // Zero is reserved for preallocated files
   kZeroType = 0,
 
-  kFullType = 1,
+  kFullType = 1,  // 完整的 user record
 
   // For fragments
-  kFirstType = 2,
-  kMiddleType = 3,
-  kLastType = 4
+  kFirstType = 2, // 切分的 user record 的第一个 record
+  kMiddleType = 3, // user record 中间的 record
+  kLastType = 4 // 最后一个 record
 };
 static const int kMaxRecordType = kLastType;
 
-static const int kBlockSize = 32768;
+static const int kBlockSize = 32768; // block：32KB
 
 // Header is checksum (4 bytes), length (2 bytes), type (1 byte).
-static const int kHeaderSize = 4 + 2 + 1;
+static const int kHeaderSize = 4 + 2 + 1; // 7 bytes 的 head
 
 }  // namespace log
 }  // namespace leveldb
