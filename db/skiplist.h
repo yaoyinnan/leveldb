@@ -220,6 +220,7 @@ inline void SkipList<Key, Comparator>::Iterator::Prev() {
 
 template <typename Key, class Comparator>
 inline void SkipList<Key, Comparator>::Iterator::Seek(const Key& target) {
+  //通过调⽤FindGreaterOrEqual⽅法查找⽬标键
   node_ = list_->FindGreaterOrEqual(target, nullptr);
 }
 
@@ -240,7 +241,9 @@ template <typename Key, class Comparator>
 int SkipList<Key, Comparator>::RandomHeight() {
   // Increase height with probability 1 in kBranching
   static const unsigned int kBranching = 4;
+  //初始层⾼为1
   int height = 1;
+  //kMaxHeight：最⼤层⾼12。通过概率确定是否需要增加层⾼
   while (height < kMaxHeight && rnd_.OneIn(kBranching)) {
     height++;
   }
@@ -259,14 +262,17 @@ template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node*
 SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
                                               Node** prev) const {
+  //从头节点的最⾼层开始查找
   Node* x = head_;
   int level = GetMaxHeight() - 1;
   while (true) {
     Node* next = x->Next(level);
+    //如果节点中的值⼩于要查找的值，则继续通过该层链表查找下⼀个节点
     if (KeyIsAfterNode(key, next)) {
       // Keep searching in this list
       x = next;
     } else {
+      //如果节点中的值⼤于等于要查找的值，则降低层数，在下⼀层查找。如果已经查找到最底层，则返回该节点
       if (prev != nullptr) prev[level] = x;
       if (level == 0) {
         return next;
