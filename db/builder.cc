@@ -18,8 +18,10 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
                   TableCache* table_cache, Iterator* iter, FileMetaData* meta) {
   Status s;
   meta->file_size = 0;
+  //迭代器移动到第⼀个节点
   iter->SeekToFirst();
 
+  //⽣成⼀个SSTable⽂件名
   std::string fname = TableFileName(dbname, meta->number);
   if (iter->Valid()) {
     WritableFile* file;
@@ -28,9 +30,11 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
       return s;
     }
 
+    //⽣成⼀个TableBuilder
     TableBuilder* builder = new TableBuilder(options, file);
     meta->smallest.DecodeFrom(iter->key());
     Slice key;
+    //调⽤迭代器，依次将每个键-值对加⼊TableBuilder
     for (; iter->Valid(); iter->Next()) {
       key = iter->key();
       builder->Add(key, iter->value());
@@ -40,6 +44,7 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
     }
 
     // Finish and check for builder errors
+    //调⽤TableBuilder的Finish函数⽣成SSTable⽂件
     s = builder->Finish();
     if (s.ok()) {
       meta->file_size = builder->FileSize();
@@ -48,9 +53,11 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
     delete builder;
 
     // Finish and check for file errors
+    //将⽂件刷新到磁盘
     if (s.ok()) {
       s = file->Sync();
     }
+    //关闭⽂件
     if (s.ok()) {
       s = file->Close();
     }

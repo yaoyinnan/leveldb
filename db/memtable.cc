@@ -87,6 +87,7 @@ void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
   const size_t encoded_len = VarintLength(internal_key_size) +
                              internal_key_size + VarintLength(val_size) +
                              val_size;
+  //分配内存并将数据按图所⽰的格式组织之后放⼊该段内存
   char* buf = arena_.Allocate(encoded_len);
   char* p = EncodeVarint32(buf, internal_key_size);
   std::memcpy(p, key.data(), key_size);
@@ -96,12 +97,15 @@ void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
   p = EncodeVarint32(p, val_size);
   std::memcpy(p, value.data(), val_size);
   assert(p + val_size == buf + encoded_len);
+  //调⽤SkipList的Insert⽅法将数据插⼊
   table_.Insert(buf);
 }
 
 bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
   Slice memkey = key.memtable_key();
+  //⽣成⼀个SkipList迭代器
   Table::Iterator iter(&table_);
+  //在SkipList中查找
   iter.Seek(memkey.data());
   if (iter.Valid()) {
     // entry format is:
@@ -115,17 +119,21 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
     // all entries with overly large sequence numbers.
     const char* entry = iter.key();
     uint32_t key_length;
+    //获取key的值
     const char* key_ptr = GetVarint32Ptr(entry, entry + 5, &key_length);
+    //如果判断key完全相同，则继续取出ValueType，判断是否已经删除
     if (comparator_.comparator.user_comparator()->Compare(
             Slice(key_ptr, key_length - 8), key.user_key()) == 0) {
       // Correct user key
       const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);
       switch (static_cast<ValueType>(tag & 0xff)) {
+        //如果ValueType为增加⼀个键-值对，则取出值并且返回true
         case kTypeValue: {
           Slice v = GetLengthPrefixedSlice(key_ptr + key_length);
           value->assign(v.data(), v.size());
           return true;
         }
+        //如果ValueType为删除⼀个键-值对，则将状态赋值为NotFound，并且返回true
         case kTypeDeletion:
           *s = Status::NotFound(Slice());
           return true;
