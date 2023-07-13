@@ -69,6 +69,8 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
 
   Slice fragment;
   while (true) {
+    // ReadPhysicalRecord函数会读取Log⽂件，之后保存读取的记录到fragment变量，
+    // 并且返回该条记录的类型
     const unsigned int record_type = ReadPhysicalRecord(&fragment);
 
     // ReadPhysicalRecord may have only had an empty trailer remaining in its
@@ -77,6 +79,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
     uint64_t physical_record_offset =
         end_of_buffer_offset_ - buffer_.size() - kHeaderSize - fragment.size();
 
+    // 根据记录类型，判断是否需要将当前读取的记录附加到scratch并继续读取
     if (resyncing_) {
       if (record_type == kMiddleType) {
         continue;
@@ -101,6 +104,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
         }
         prospective_record_offset = physical_record_offset;
         scratch->clear();
+        // 如果是完整的记录则直接赋值给record并返回
         *record = fragment;
         last_record_offset_ = prospective_record_offset;
         return true;
@@ -116,6 +120,7 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
           }
         }
         prospective_record_offset = physical_record_offset;
+        // 如果是记录的第⼀部分，则先将该记录复制到scratch，之后继续读取记录
         scratch->assign(fragment.data(), fragment.size());
         in_fragmented_record = true;
         break;
@@ -134,9 +139,12 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
           ReportCorruption(fragment.size(),
                            "missing start of fragmented record(2)");
         } else {
+          // 如果是记录的最后⼀部分，则将该部分继续追加到scratch，因为已经读取到最后⼀部分，
+          // 因此可以将scratch的数据赋值给record，并返回记录
           scratch->append(fragment.data(), fragment.size());
           *record = Slice(*scratch);
           last_record_offset_ = prospective_record_offset;
+          // 直到读取完 type 为 kLastType 的才 return
           return true;
         }
         break;
